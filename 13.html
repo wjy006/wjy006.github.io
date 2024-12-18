@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>會飛的魚遊戲</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #00BFFF; /* 水的顏色 */
+        }
+        canvas {
+            display: block;
+            background-color: #00BFFF; /* 水的顏色 */
+        }
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: white;
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<div id="gameOver" class="game-over" style="display: none;">
+    遊戲結束
+    <br>
+    按 R 重新開始
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // 設定畫布大小
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // 水面和水底
+    const waterTop = 0;
+    const waterBottom = canvas.height - 100; // 水底的高度
+
+    // 魚的屬性
+    const fishWidth = 100;
+    const fishHeight = 50;
+    let fish = {
+        x: 100,
+        y: canvas.height / 2,
+        dy: 2,
+        speed: 5,
+        isMovingUp: false
+    };
+
+    // 障礙物的屬性
+    const obstacleWidth = 40;
+    const obstacleHeight = 100;
+    let obstacles = [];
+    const obstacleSpeed = 2;
+
+    // 遊戲狀態
+    let isGameOver = false;
+
+    // 設定鍵盤控制
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowUp") {
+            fish.isMovingUp = true;
+        }
+    });
+
+    document.addEventListener("keyup", (event) => {
+        if (event.key === "ArrowUp") {
+            fish.isMovingUp = false;
+        }
+    });
+
+    // 畫出背景（水和水底）
+    function drawBackground() {
+        ctx.fillStyle = "#00BFFF"; // 水的顏色
+        ctx.fillRect(0, 0, canvas.width, waterBottom); // 水面到水底的區域
+
+        ctx.fillStyle = "#228B22"; // 水底顏色
+        ctx.fillRect(0, waterBottom, canvas.width, canvas.height - waterBottom); // 水底區域
+    }
+
+    // 畫魚（使用簡單的魚形狀）
+    function drawFish() {
+        ctx.fillStyle = "#FFD700"; // 魚的顏色
+        // 魚的圖形（簡單的橢圓形和三角尾巴）
+        ctx.beginPath();
+        ctx.ellipse(fish.x + fishWidth / 2, fish.y + fishHeight / 2, fishWidth / 2, fishHeight / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 畫尾巴
+        ctx.beginPath();
+        ctx.moveTo(fish.x, fish.y + fishHeight / 2);
+        ctx.lineTo(fish.x - 20, fish.y + fishHeight);
+        ctx.lineTo(fish.x - 20, fish.y);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // 更新魚的位置
+    function updateFish() {
+        if (fish.isMovingUp) {
+            fish.y -= fish.speed;
+        } else {
+            fish.y += fish.dy;
+        }
+
+        // 防止魚飛出水面或水底
+        if (fish.y < waterTop) {
+            fish.y = waterTop; // 限制魚不能飛出水面
+            gameOver();
+        } else if (fish.y + fishHeight > waterBottom) {
+            fish.y = waterBottom - fishHeight; // 限制魚不能飛出水底
+            gameOver();
+        }
+    }
+
+    // 隨機生成障礙物
+    function generateObstacles() {
+        if (Math.random() < 0.02) { // 障礙物生成機率
+            let obstacleY = Math.floor(Math.random() * (waterBottom - 100 - obstacleHeight));
+            obstacles.push({ x: canvas.width, y: obstacleY });
+        }
+    }
+
+    // 更新障礙物位置
+    function updateObstacles() {
+        for (let i = 0; i < obstacles.length; i++) {
+            obstacles[i].x -= obstacleSpeed;
+
+            // 檢查魚是否與障礙物碰撞
+            if (
+                fish.x + fishWidth > obstacles[i].x &&
+                fish.x < obstacles[i].x + obstacleWidth &&
+                fish.y + fishHeight > obstacles[i].y &&
+                fish.y < obstacles[i].y + obstacleHeight
+            ) {
+                gameOver(); // 魚與障礙物碰撞，遊戲結束
+            }
+
+            // 移出畫面後刪除障礙物
+            if (obstacles[i].x + obstacleWidth < 0) {
+                obstacles.splice(i, 1);
+                i--;
+            }
+        }
+    }
+
+    // 畫出障礙物
+    function drawObstacles() {
+        ctx.fillStyle = "#8B0000"; // 障礙物顏色
+        for (let i = 0; i < obstacles.length; i++) {
+            ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacleWidth, obstacleHeight);
+        }
+    }
+
+    // 顯示遊戲結束
+    function gameOver() {
+        if (!isGameOver) {
+            isGameOver = true;
+            document.getElementById("gameOver").style.display = "block";
+        }
+    }
+
+    // 重新開始遊戲
+    function restartGame() {
+        isGameOver = false;
+        document.getElementById("gameOver").style.display = "none";
+        fish.y = canvas.height / 2;
+        fish.isMovingUp = false;
+        obstacles = [];
+    }
+
+    // 監聽重新開始遊戲的事件
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "r" || event.key === "R") {
+            restartGame();
+        }
+    });
+
+    // 遊戲主循環
+    function gameLoop() {
+        if (isGameOver) return; // 遊戲結束時停止更新
+
+        // 清空畫布
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 畫背景
+        drawBackground();
+
+        // 更新並畫出魚
+        updateFish();
+        drawFish();
+
+        // 生成障礙物
+        generateObstacles();
+
+        // 更新並畫出障礙物
+        updateObstacles();
+        drawObstacles();
+
+        // 設定下一幀
+        requestAnimationFrame(gameLoop);
+    }
+
+    // 啟動遊戲循環
+    gameLoop();
+</script>
+
+</body>
+</html>
